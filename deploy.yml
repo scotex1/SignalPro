@@ -1,0 +1,129 @@
+# ─────────────────────────────────────────────────────────────────
+# SignalPro FX — GitHub Actions Auto Deploy
+# ─────────────────────────────────────────────────────────────────
+# Kab chalega:
+#   - main branch pe push hone pe → VPS pe auto deploy
+#   - Manually bhi run kar sakte ho (workflow_dispatch)
+#
+# Pehle yeh GitHub Secrets set karo (Settings → Secrets → Actions):
+#   VPS_HOST         → aapka VPS IP, e.g. 123.45.67.89
+#   VPS_USER         → ssh user, e.g. ubuntu or root
+#   VPS_SSH_KEY      → private SSH key (cat ~/.ssh/id_rsa)
+#   TWELVE_DATA_KEY  → Twelve Data API key
+#   TELEGRAM_TOKEN   → Telegram bot token
+#   TELEGRAM_CHANNEL → e.g. @signalpro_vip
+#   ADMIN_USER_ID    → aapka Telegram numeric ID
+#   PAYMENT_UPI      → aapka UPI ID
+# ─────────────────────────────────────────────────────────────────
+
+name: Deploy SignalPro to VPS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:     # Manual trigger bhi allowed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Code checkout
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Python test (basic import check)
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Basic syntax check
+        run: |
+          python -m py_compile backend/signal_engine.py
+          python -m py_compile telegram_bot/bot.py
+          echo "Syntax OK"
+
+      # Step 3: Config file banao (secrets se)
+      - name: Generate config file
+        run: |
+          cat > config/settings.env << EOF
+          TWELVE_DATA_API_KEY=${{ secrets.TWELVE_DATA_KEY }}
+          TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHANNEL=${{ secrets.TELEGRAM_CHANNEL }}
+          ADMIN_USER_ID=${{ secrets.ADMIN_USER_ID }}
+          PAYMENT_UPI=${{ secrets.PAYMENT_UPI }}
+          EOF
+
+      # Step 4: VPS pe deploy (SSH ke zariye)
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key:      ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+
+            # Project folder banao (pehli baar)
+            mkdir -p /home/${{ secrets.VPS_USER }}/signalpro
+
+            # Pehle services band karo
+            echo "Stopping services..."
+            sudo systemctl stop signalpro-engine  2>/dev/null || true
+            sudo systemctl stop signalpro-bot     2>/dev/null || true
+
+            echo "Deployment done, restarting..."
+
+      # Step 5: Files copy karo (rsync)
+      - name: Sync files to VPS
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -avzr --delete --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='signalpro.db'
+          path: ./
+          remote_path: /home/${{ secrets.VPS_USER }}/signalpro/
+          remote_host: ${{ secrets.VPS_HOST }}
+          remote_user: ${{ secrets.VPS_USER }}
+          remote_key:  ${{ secrets.VPS_SSH_KEY }}
+
+      # Step 6: VPS pe install + restart
+      - name: Install & restart on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key:      ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/${{ secrets.VPS_USER }}/signalpro
+
+            # Dependencies install
+            pip3 install -r requirements.txt --quiet
+
+            # Systemd services restart
+            sudo systemctl start signalpro-engine
+            sudo systemctl start signalpro-bot
+
+            echo "Services started!"
+            sudo systemctl status signalpro-engine --no-pager -l
+            sudo systemctl status signalpro-bot    --no-pager -l
+
+      # Step 7: Deploy success notification
+      - name: Notify success
+        if: success()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.ADMIN_USER_ID }}" \
+            -d text="✅ SignalPro deployed successfully!%0ACommit: ${{ github.sha }}%0ABy: ${{ github.actor }}" \
+            -d parse_mode="Markdown"
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.ADMIN_USER_ID }}" \
+            -d text="❌ Deploy FAILED!%0ACommit: ${{ github.sha }}%0ACheck GitHub Actions for details." \
+            -d parse_mode="Markdown"
