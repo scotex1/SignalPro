@@ -1,0 +1,62 @@
+# SignalPro FX — .gitignore
+# Yeh files KABHI GitHub pe mat bhejo
+
+# ── Secrets & Config ──────────────────────────────────────────
+config/settings.env
+*.env
+.env
+.env.*
+
+# ── Database (user data private hai) ─────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Log files ─────────────────────────────────────────────────
+*.log
+logs/
+signalpro_master.log
+signalpro.log
+
+# ── Signals history (large ho sakti hai) ─────────────────────
+signals_history.json
+
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+venv/
+.venv/
+env/
+ENV/
+
+# ── MT4 generated files ───────────────────────────────────────
+mt4_ea/signalpro_signal.txt
+mt4_ea/signalpro_status.txt
+mt4_ea/signalpro_history.txt
+
+# ── OS files ──────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ── IDE ───────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
