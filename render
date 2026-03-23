@@ -1,0 +1,44 @@
+# render.yaml — Render.com Auto Deploy Config
+# Yeh file GitHub repo mein honi chahiye
+# Render automatically 2 services banayega:
+#   1. signal-engine  → Signal generator (background worker)
+#   2. telegram-bot   → Subscription bot (background worker)
+
+services:
+  # ── Service 1: Signal Engine ──────────────────────────────
+  - type: worker
+    name: signalpro-engine
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    plan: free
+    envVars:
+      - key: TWELVE_DATA_API_KEY
+        sync: false          # Render dashboard mein manually daalo
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHANNEL
+        sync: false
+      - key: ADMIN_USER_ID
+        sync: false
+      - key: PAYMENT_UPI
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
+
+  # ── Service 2: Telegram Bot ───────────────────────────────
+  - type: worker
+    name: signalpro-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python telegram_bot/bot.py
+    plan: free
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: ADMIN_USER_ID
+        sync: false
+      - key: PAYMENT_UPI
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
