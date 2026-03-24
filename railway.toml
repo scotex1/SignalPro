@@ -1,0 +1,10 @@
+# Railway.app Configuration
+# Yeh file Railway ko batati hai kaise run karna hai
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "python run.py"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
