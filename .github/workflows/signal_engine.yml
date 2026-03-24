@@ -5,6 +5,9 @@ on:
     - cron: '*/15 * * * *'
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   run-signals:
     runs-on: ubuntu-latest
@@ -12,10 +15,10 @@ jobs:
 
     steps:
       - name: Repo checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Python setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v5.4.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -33,3 +36,13 @@ jobs:
       - name: Run summary
         if: always()
         run: echo "Scan complete at $(date -u)"
+```
+
+**"Commit changes"** click karo — warning bilkul band ho jaayegi! ✅
+
+---
+
+Aur ek important cheez — **"Signal engine run karo" step ka output** kya tha? Woh expand karke dekho — wahan likha hoga:
+```
+Checking XAU/USD...
+  No signal — market unclear
