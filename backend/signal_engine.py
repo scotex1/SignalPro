@@ -699,9 +699,9 @@ class SignalProMT5:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="SignalPro MT5 Engine")
-    parser.add_argument("--once",     action="store_true", help="Sirf ek scan")
+    parser.add_argument("--once", action="store_true", help="Sirf ek scan")
     parser.add_argument("--interval", type=int, default=15, help="Scan interval minutes")
-    parser.add_argument("--score",    type=int, default=MIN_SCORE, help="Min score %")
+    parser.add_argument("--score", type=int, default=MIN_SCORE, help="Min score percent")
     args = parser.parse_args()
 
     if args.score != MIN_SCORE:
