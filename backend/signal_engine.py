@@ -1,4 +1,3 @@
-
 """
 SignalPro FX — MT5 Real-Time Signal Engine v3.0
 =================================================
@@ -23,7 +22,7 @@ import time
 import json
 import logging
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import pandas as pd
@@ -42,17 +41,43 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
     handlers=[
-        logging.FileHandler("signalpro_mt5.log"),
-        logging.StreamHandler()
+        logging.FileHandler("signalpro_mt5.log", encoding="utf-8"),
+        logging.StreamHandler(stream=open(os.devnull, 'w'))
     ]
 )
+
+# Windows CMD ke liye alag clean handler
+import sys
+console = logging.StreamHandler(sys.stdout)
+console.setLevel(logging.INFO)
+console.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
+
+# Emoji remove karke clean print karo
+class CleanFormatter(logging.Formatter):
+    EMOJI_MAP = {
+        "✅": "[OK]", "❌": "[NO]", "📊": "[SC]", "📡": "[MT5]",
+        "🏦": "[OB]", "💧": "[LS]", "⚡": "[FVG]", "🕯": "[CD]",
+        "═": "=", "─": "-", "🟢": "[BUY]", "🔴": "[SELL]",
+        "📍": ">>", "✅": "[TP]", "📐": "[RR]", "📏": "[PIP]",
+        "📶": "[SP]", "⏰": "[T]", "⚠️": "[!]",
+    }
+    def format(self, record):
+        msg = super().format(record)
+        for emoji, replacement in self.EMOJI_MAP.items():
+            msg = msg.replace(emoji, replacement)
+        return msg
+
+clean_handler = logging.StreamHandler(sys.stdout)
+clean_handler.setLevel(logging.INFO)
+clean_handler.setFormatter(CleanFormatter("%(asctime)s | %(levelname)s | %(message)s"))
+logging.getLogger().addHandler(clean_handler)
 logger = logging.getLogger("SignalPro-MT5")
 
 # ─────────────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────────────
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN")
-CHANNEL_ID         = os.getenv("TELEGRAM_CHANNEL",   "@your_channel")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8654507644:AAHXFome1kL-0eskWnnl-H5PizMtDFL2YCs")
+CHANNEL_ID         = os.getenv("TELEGRAM_CHANNEL",   "@signape4v")
 
 # MT5 login (optional — agar auto login chahiye)
 # Warna MT5 already open hoga to yeh blank chhod do
@@ -388,13 +413,13 @@ def step5_candle(df_ltf, direction) -> dict:
     rejection = False
 
     if direction == "BUY":
-        engulfing = c2 < o2 and c > o and c > o2 and o < c2 and body > avg_body
-        pin_bar   = lower_wick > body * 2 and lower_wick > upper_wick * 2 and body_ratio < 0.35
-        rejection = c > o and body_ratio > 0.6 and body > avg_body * 1.3
+        engulfing = c2 < o2 and c > o and c > o2 and o < c2 and body > avg_body * 0.8
+        pin_bar   = lower_wick > body * 1.5 and lower_wick > upper_wick and body_ratio < 0.45
+        rejection = c > o and body_ratio > 0.45 and body > avg_body * 0.9
     else:
-        engulfing = c2 > o2 and c < o and c < o2 and o > c2 and body > avg_body
-        pin_bar   = upper_wick > body * 2 and upper_wick > lower_wick * 2 and body_ratio < 0.35
-        rejection = c < o and body_ratio > 0.6 and body > avg_body * 1.3
+        engulfing = c2 > o2 and c < o and c < o2 and o > c2 and body > avg_body * 0.8
+        pin_bar   = upper_wick > body * 1.5 and upper_wick > lower_wick and body_ratio < 0.45
+        rejection = c < o and body_ratio > 0.45 and body > avg_body * 0.9
 
     if engulfing:
         result.update({"pattern": "ENGULFING", "score": 15,
@@ -558,7 +583,7 @@ class SignalProMT5:
             },
             "candle_pattern": s5.get("pattern"),
             "spread":     tick["spread"] if tick else None,
-            "timestamp":  datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+            "timestamp":  datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             "interval":   "M15",
             "data_source": "MT5 Real-Time",
         }
@@ -618,11 +643,11 @@ class SignalProMT5:
         last = self.last_sig.get(pair)
         if not last:
             return True
-        return (datetime.utcnow() - last).seconds / 60 >= SIGNAL_COOLDOWN
+        return (datetime.now(timezone.utc) - last).seconds / 60 >= SIGNAL_COOLDOWN
 
     def run_once(self):
         logger.info("═" * 55)
-        logger.info(f"SCAN: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+        logger.info(f"SCAN: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
 
         if not self.mt5.check_connection():
             logger.error("MT5 reconnect failed — scan skipped")
@@ -634,7 +659,7 @@ class SignalProMT5:
                 sig = self.analyze_pair(name, config)
                 if sig and self.should_send(name):
                     self.send_telegram(sig)
-                    self.last_sig[name] = datetime.utcnow()
+                    self.last_sig[name] = datetime.now(timezone.utc)
                     found.append(sig)
                     with open("signals_history.json", "a") as f:
                         f.write(json.dumps({
@@ -654,7 +679,7 @@ class SignalProMT5:
         logger.info(f"Min Score: {MIN_SCORE}% | Scan: {interval_min}min")
 
         if not self.start():
- return
+            return
 
         try:
             while True:
