@@ -52,8 +52,8 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
 # ── CONFIG ──────────────────────────────────────────────────────
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN")
-CHANNEL_ID         = os.getenv("TELEGRAM_CHANNEL",   "@your_channel")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8654507644:AAHXFome1kL-0eskWnnl-H5PizMtDFL2YCs")
+CHANNEL_ID         = os.getenv("TELEGRAM_CHANNEL",   "@signape4v")
 
 MT5_LOGIN    = 0
 MT5_PASSWORD = ""
